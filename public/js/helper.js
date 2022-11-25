@@ -9,9 +9,9 @@ function ajaxForm(formItems) {
 
 
 /**
- * 
+ *
  * @param {*} url route
- * @param {*} method POST or GET 
+ * @param {*} method POST or GET
  * @param {*} functionsOnSuccess Array of functions that should be called after ajax
  * @param {*} form for POST request
  */
@@ -44,7 +44,11 @@ function ajax(url, method, functionsOnSuccess, form) {
       console.log(textStatus);
       console.log(error);
     },
-    success: function(response) {
+      success:function(response) {
+          handleData(response, functionsOnSuccess)
+      }
+          //handleData(response, functionsOnSuccess)
+      /*function(response) {
       for (var j = 0; j < functionsOnSuccess.length; j++) {
         for (var i = 0; i < functionsOnSuccess[j][1].length; i++) {
           if (functionsOnSuccess[j][1][i] == "response") {
@@ -53,7 +57,7 @@ function ajax(url, method, functionsOnSuccess, form) {
         }
         functionsOnSuccess[j][0].apply(this, functionsOnSuccess[j][1]);
       }
-    }
+    }*/
   });
 }
 
@@ -70,7 +74,7 @@ function exampleUseOfAjaxFunction(exampleVariable) {
     [exampleOnSuccessFunction, [exampleVariable, 'response']]
   ];
 
-  // POST 
+  // POST
   ajax('/example_route', 'POST', functionsOnSuccess, form);
 
   // GET

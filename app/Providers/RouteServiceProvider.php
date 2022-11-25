@@ -17,6 +17,7 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @var string
      */
+    protected $namespace = 'App\Http\Controllers';
     public const HOME = '/home';
 
     /**
@@ -26,16 +27,50 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        $this->configureRateLimiting();
+        parent::boot();
+    }
 
-        $this->routes(function () {
-            Route::middleware('api')
-                ->prefix('api')
-                ->group(base_path('routes/api.php'));
 
-            Route::middleware('web')
-                ->group(base_path('routes/web.php'));
-        });
+    /*------------ Define the routes for the application. ------------
+     * @return void
+     */
+    public function map()
+    {
+        $this->mapWebRoutes();
+        $this->mapApiRoutes();
+        $this->mapUserConnectionRoutes();
+    }
+    /*------------ Define the "web" routes for the application. ------------
+     * @return void
+     */
+    protected function mapWebRoutes()
+    {
+        Route::middleware('web')
+            ->namespace($this->namespace)
+            ->group(base_path('routes/web.php'));
+    }
+
+
+    /*------------ Define the "api" routes for the application ------------
+     * @return void
+     */
+    protected function mapApiRoutes()
+    {
+        Route::prefix('api')
+            ->middleware('api')
+            ->namespace($this->namespace)
+            ->group(base_path('routes/api.php'));
+    }
+
+    /*------------ Define the "admin" routes for the application. ------------
+     * @return void
+     */
+    protected function mapUserConnectionRoutes()
+    {
+        Route::prefix('connection')
+            ->middleware('web')
+            ->namespace($this->namespace)
+            ->group(base_path('routes/userConnection.php'));
     }
 
     /**
