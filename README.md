@@ -24,6 +24,8 @@ The project in production is very similar: A Laravel 8 monolith + Bootsrap + Jqu
 - Create a database, name it 'Ikonic_coding_challenge'.
 - Setup .env file
 - Run ```composer install``` and ``` php artisan key:generate ```.
+- Run ```php artisan migrate:fresh``` and ``` php artisan db:seed ```.
+- A demo account will be created after running the above **migration and seeder commands** with **email:** test@gmail.com and **password:** 1234abcd, You can login with demo account and check the functionality.
 - When you see the login page, head over the register page, create an account and log in. After that you should see some of the components in the images below and you can get started in the network_connections.blade.php file.
  
 ## Objective ✅
