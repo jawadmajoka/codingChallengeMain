@@ -4,8 +4,6 @@
 
         </tbody>
     </table>
-    <div class="d-flex justify-content-center w-100 py-2" id="more_connection">
-    </div>
     {{--<div class="d-flex justify-content-between">
       <table class="ms-1">
         <td class="align-middle">Name</td>
@@ -31,10 +29,11 @@
         <div id="connections_in_common_skeletons_">
             {{-- Paste the loading skeletons here via Jquery before the ajax to get the connections in common --}}
         </div>
-        <div class="d-flex justify-content-center w-100 py-2">
-            <button class="btn btn-sm btn-primary" id="load_more_connections_in_common_">Load
-                more
-            </button>
+        <div class="d-flex justify-content-center w-100 py-2" id="load_more_connections_in_common_">
+
         </div>
+        <input type="hidden" id="load_more_common_connection_user_id" value=""></input>
+    </div>
+    <div class="d-flex justify-content-center w-100 py-2" id="more_connection">
     </div>
 </div>

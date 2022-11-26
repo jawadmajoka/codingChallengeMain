@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Connection extends Model
 {
     use HasFactory;
+    protected $guarded = [];
 
     //--------------- Get the user that  have connection ---------------
     public function user()

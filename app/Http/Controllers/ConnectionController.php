@@ -24,44 +24,57 @@ class ConnectionController extends Controller
             $getSentRequests = $request->get('get_sent_requests');
             $getReceivedRequests = $request->get('get_received_requests');
             $getConnection = $request->get('get_connection');
+            $getCommonConnection = $request->get('get_common_connection');
             $responseArray = ['success' => true];
             //------------ Get users list of suggestion  ------------
             if (isset($getSuggestions)) {
                 //------------ Get users id of alreay sent, Received and connected requests  ------------
-                $userConnectionIds = User::getUserIds([1, 2], $userId, $userId);
+                $userConnectionIds = User::getUserIds([0, 1, 2], $userId, $userId);
                 $userSuggestionList = User::select('id', 'name', 'email')->WhereNotIn('id', $userConnectionIds)
                     ->orderby('name')->paginate(10);
                 $responseArray['userSuggestionList'] = $userSuggestionList;
             }
             //------------ Get Users list of sent request  ------------
             if (isset($getSentRequests)) {
-                $sentRequestUserIds = User::getUserIds([1], $userId);
+                $sentRequestUserIds = User::getUserIds([0], $userId);
                 $userSentRequestList = User::select('id', 'name', 'email')->WhereIn('id', $sentRequestUserIds)
-                    ->where('id', '<>', $userId)->orderby('name')->paginate(2);
+                    ->where('id', '<>', $userId)->orderby('name')->paginate(10);
                 $responseArray['userSentRequestList'] = $userSentRequestList;
             }
             //------------ Get Users list of Received request  ------------
             if (isset($getReceivedRequests)) {
                 $receivedRequestUserIds = User::getUserIds([1], '', $userId);
                 $userReceivedRequestList = User::select('id', 'name', 'email')->WhereIn('id', $receivedRequestUserIds)
-                    ->where('id', '<>', $userId)->orderby('name')->paginate(2);
+                    ->where('id', '<>', $userId)->orderby('name')->paginate(10);
                 $responseArray['userReceivedRequestList'] = $userReceivedRequestList;
             }
 
             //------------ Get Users list of connections  ------------
             if (isset($getConnection)) {
                 $connectedUserIds = User::getUserIds([2], $userId, $userId);
-                $userConnectionList = User::leftJoin('connections', function ($joinCondition) use ($connectedUserIds) {
-                    $joinCondition->on('requester_user_id', '=', 'users.id')->where('status', '=', 2)
-                        ->whereIn('requester_user_id', $connectedUserIds);
-                    $joinCondition->orOn('recipient_user_id', '=', 'users.id')->where('status', '=', 2)
-                        ->whereIn('recipient_user_id', $connectedUserIds);
-                })->select('users.id', 'name', 'email',
-                    DB::raw('count(connections.id) as commonconnections')
-                )->where('users.id', '<>', $userId)
-                    ->whereIn('users.id', $connectedUserIds)
-                    ->groupBy('users.id')->paginate(5);
+                $userConnectionList = User::select('id', 'name', 'email')->where('users.id', '<>', $userId)
+                    ->whereIn('id', $connectedUserIds)->paginate(10);
+                $dataArray = $userConnectionList->items();
+                foreach ($dataArray as $data_array) {
+                    $getCommonConnectionUserIds = User::getCommonConnectionUserIds($userId, $data_array->id, $connectedUserIds);
+                    $data_array->commonconnections = count($getCommonConnectionUserIds);
+                }
+
                 $responseArray['userConnectionList'] = $userConnectionList;
+            }
+            //------------ Get common connected Users list  ------------
+            if (isset($getCommonConnection)) {
+                $connectedUserIds = User::getUserIds([2], $userId, $userId);
+
+                $connectionOfUserId = $request->get('connected_user_id');
+                //------- Get list of connected users of common connection user -------
+                $getCommonConnectionUserIds = User::getCommonConnectionUserIds($userId, $connectionOfUserId, $connectedUserIds);
+
+                $userCommonConnectionList = User::select('users.id', 'name', 'email')
+                    ->whereNotin('users.id', [$userId, $connectionOfUserId])
+                    ->whereIn('users.id', $getCommonConnectionUserIds)
+                    ->paginate(10);
+                $responseArray['userCommonConnectionList'] = $userCommonConnectionList;
             }
         } catch (\Exception $e) {
             Log::info('Error occured in Method:index of controller:ConnectionController' . $e->getLine() . " With error $e");
@@ -76,9 +89,24 @@ class ConnectionController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    //--------------------- Create connection request ---------------------
+    public function create(Request $request)
     {
-        //
+        try {
+            $userId = $request->user()->id;
+            $recipientUserId = $request->get('recipient_user_id');
+            $newRequest = [
+                'requester_user_id' => $userId,
+                'recipient_user_id' => $recipientUserId
+            ];
+            Connection::create($newRequest);
+            $responseArray = ['success' => true, 'message' => 'Connection Request sent successfully.'];
+        } catch (\Exception $e) {
+            Log::info('Error occured in Method:create of controller:ConnectionController' . $e->getLine() . " With error $e");
+            $responseArray = ['success' => false, 'error' => 'Connection Request not sent, please try again.'];
+        }
+        $response = Response::json($responseArray, 200);
+        return $response;
     }
 
     /**
@@ -123,7 +151,19 @@ class ConnectionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        try {
+            $userId = $request->user()->id;
+            Connection::where('requester_user_id', $id)->where('recipient_user_id', $userId)
+                ->update([
+                    'status' => 2
+                ]);
+            $responseArray = ['success' => true, 'message' => 'Request updated successfully.'];
+        } catch (\Exception $e) {
+            Log::info('Error occured in Method:update of controller:ConnectionController' . $e->getLine() . " With error $e");
+            $responseArray = ['success' => false, 'error' => 'Request not updated, please try again.'];
+        }
+        $response = Response::json($responseArray, 200);
+        return $response;
     }
 
     /**
@@ -132,9 +172,28 @@ class ConnectionController extends Controller
      * @param int $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy($id, Request $request)
     {
-        //
+        try {
+            $userId = $request->user()->id;
+            $isRemoveAlreadyConnected = $request->get('is_already_connected');
+            //------------------ Remove sent/connected Request Query  ------------------
+            $deleteQuery = Connection::Where(function ($query) use ($userId, $id) {
+                $query->where('requester_user_id', $userId)->where('recipient_user_id', $id);
+            });
+            if (isset($isRemoveAlreadyConnected)) {
+                $deleteQuery->orWhere(function ($query) use ($userId, $id) {
+                    $query->where('requester_user_id', $id)->where('recipient_user_id', $userId);
+                });
+            }
+            $deleteQuery->delete();
+            $responseArray = ['success' => true, 'message' => 'Request removed successfully.'];
+        } catch (\Exception $e) {
+            Log::info('Error occured in Method:destroy of controller:ConnectionController' . $e->getLine() . " With error $e");
+            $responseArray = ['success' => false, 'error' => 'Request not removed, please try again.'];
+        }
+        $response = Response::json($responseArray, 200);
+        return $response;
     }
 
 }

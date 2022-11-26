@@ -78,4 +78,24 @@ class User extends Authenticatable
         }
         return $userConnectionIds;
     }
+
+    //--------------- Get common connection user ids ---------------
+    public static function getCommonConnectionUserIds($firstUserId = 0, $secondUserId = 0, $connectedUserIds = [])
+    {
+        try {
+            $connectedUserConnectionIds = User::getUserIds([2], $secondUserId, $secondUserId);
+            $commonConnectionUsersIds = array_values(array_intersect($connectedUserIds, $connectedUserConnectionIds));
+            //--------------- Remove Login user  id ---------------
+            $posOfValue = array_search($firstUserId, array_values($commonConnectionUsersIds));
+            unset($commonConnectionUsersIds[$posOfValue]);
+            $commonConnectionUsersIds = array_values($commonConnectionUsersIds);
+            //---------------  Remove user own id ---------------
+            $posOfValue = array_search($secondUserId, $commonConnectionUsersIds);
+            unset($commonConnectionUsersIds[$posOfValue]);
+            $commonConnectionUsersIds = array_values($commonConnectionUsersIds);
+        } catch (\Exception $e) {
+            $commonConnectionUsersIds = [];
+        }
+        return $commonConnectionUsersIds;
+    }
 }
